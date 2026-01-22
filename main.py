@@ -1,6 +1,8 @@
 from tkinter import *
 from tkinter import ttk
 import sqlite3 as sq
+from datetime import date
+import re
 
 root = Tk()
 
@@ -9,6 +11,7 @@ id_visual_Cli = StringVar()
 nome_cliente_visual_Cli = StringVar()
 telefone_visual_Cli = StringVar()
 email_visual_Cli = StringVar()
+data_contato_visual_Cli = StringVar()
 data_cadastro_visual_Cli = StringVar()
 id_edit_Cli = -1
 nome_cliente_edit_Cli = ""
@@ -46,9 +49,14 @@ class Funcoes():
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS clientes (
                             id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
                             nome_cliente TEXT NOT NULL,
-                            telefone TEXT,
-                            email TEXT,
-                            data_cadastro TEXT
+                            telefone TEXT NOT NULL CHECK
+                                (length(telefone) = 11),
+                            email TEXT NOT NULL CHECK
+                                (email LIKE '%@%.com'),
+                            data_cadastro TEXT NOT NULL,
+                            data_contato TEXT CHECK
+                                (data_contato IS NULL
+                                OR length(data_contato) = 8)
                             );""")
         #Criar tabela serviço
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS servicos (
@@ -57,7 +65,7 @@ class Funcoes():
                             tipo_servico TEXT NOT NULL,
                             descricao TEXT NOT NULL,
                             status TEXT NOT NULL,
-                            data_criacao TEXT,
+                            data_criacao TEXT NOT NULL,
                             FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
                             );""")
         self.con.commit()
@@ -81,7 +89,7 @@ class Funcoes():
         self.entry_nome_cliente_C.delete(0, END)
         self.entry_telefone_C.delete(0, END)
         self.entry_email_C.delete(0, END)
-        self.entry_data_cadastro_C.delete(0, END)
+        self.entry_data_contato_C.delete(0, END)
     def sair_tela4(self):
         self.frame_4.place_forget()
         self.frame_2.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
@@ -139,7 +147,7 @@ class Funcoes():
             self.bbt_pesquisa_selecionado = "telefone"
         elif self.bbt_pesquisa_selecionado== "Email":
             self.bbt_pesquisa_selecionado = "email"
-        elif self.bbt_pesquisa_selecionado== "Data do cadastro":
+        elif self.bbt_pesquisa_selecionado== "Data de Cadastro":
             self.bbt_pesquisa_selecionado = "data_cadastro"
         return self.bbt_pesquisa_selecionado
     #Funções de preencher a tabela
@@ -163,6 +171,8 @@ class Funcoes():
                                     WHERE {colunaCli} LIKE ?
                                     ORDER BY nome_cliente ASC""", (f"%{textopesqentry}%",))
         for i in self.cursor.fetchall():
+            i = list(i)
+            i[2] = f"({i[2][:2]}) {i[2][2:7]}-{i[2][7:]}"
             self.listaCli.insert("", END, values=i)
         self.desconectar_bd()
     #Função da pesquisa dinamica na aba Clientes
@@ -173,17 +183,22 @@ class Funcoes():
         self.entry_nome_cliente_C.delete(0, END)
         self.entry_telefone_C.delete(0, END)
         self.entry_email_C.delete(0, END)
-        self.entry_data_cadastro_C.delete(0, END)
+        self.entry_data_contato_C.delete(0, END)
     #Função de Cadastrar um cliente
     def add_cliente_C(self):
         self.nome_cliente_Cli = self.entry_nome_cliente_C.get()
         self.telefone_Cli = self.entry_telefone_C.get()
+        self.telefone_limpo_Cli = ''.join(filter(str.isdigit, self.telefone_Cli))
         self.email_Cli = self.entry_email_C.get()
-        self.data_cadastro_Cli = self.entry_data_cadastro_C.get()
+        self.data_contato_Cli = self.entry_data_contato_C.get()
+        self.data_contato_limpo_Cli = ''.join(filter(str.isdigit, self.data_contato_Cli))
+        if self.data_contato_Cli== "":
+            self.data_contato_Cli = None
+        self.data_cadastro_Cli = date.today()
         self.conectar_bd()
         if self.nome_cliente_Cli!="":
-            self.cursor.execute("""INSERT INTO clientes (nome_cliente, telefone, email, data_cadastro)
-                                VALUES (?,?,?,?); """, (self.nome_cliente_Cli, self.telefone_Cli, self.email_Cli, self.data_cadastro_Cli))
+            self.cursor.execute("""INSERT INTO clientes (nome_cliente, telefone, email, data_cadastro, data_contato)
+                                VALUES (?,?,?,?,?); """, (self.nome_cliente_Cli, self.telefone_limpo_Cli, self.email_Cli, self.data_cadastro_Cli, self.data_contato_limpo_Cli))
         self.con.commit()
         self.desconectar_bd()
         self.preencher_lista_Cli()
@@ -205,6 +220,17 @@ class Funcoes():
             nome_cliente_edit_Cli = col2
             telefone_edit_Cli = col3
             email_edit_Cli = col4
+        self.conectar_bd()
+        self.cursor.execute("""SELECT data_contato FROM clientes
+                                WHERE id_cliente = ?; """, (id_edit_Cli,))
+        data_contato_cliente = self.cursor.fetchone()
+        self.desconectar_bd()
+        if data_contato_cliente[0] is None:
+            data_contato_visual_Cli.set("Não informado")
+        else:
+            data_contato_n = data_contato_cliente[0]
+            data_contato_formatada = f"{data_contato_n[:4]}-{data_contato_n[4:6]}-{data_contato_n[6:]}"
+            data_contato_visual_Cli.set(data_contato_formatada)
     #Função que garante que foi clicado 2 vezes em um cliente
     def DuploClickItemOnCli(self, event):
         self.mouseCli = event.widget
@@ -247,10 +273,11 @@ class Funcoes():
         global id_edit_Cli
         self.nome_cliente_Cli = self.entry_nome_cliente_edit_C.get()
         self.telefone_Cli = self.entry_telefone_edit_C.get()
+        self.telefone_limpo_Cli = ''.join(filter(str.isdigit, self.telefone_Cli))
         self.email_Cli = self.entry_email_edit_C.get()
         self.conectar_bd()
         self.cursor.execute("""UPDATE clientes SET nome_cliente = ?, telefone = ?, email = ?
-                            WHERE id_cliente = ?""", (self.nome_cliente_Cli, self.telefone_Cli, self.email_Cli, id_edit_Cli,))
+                            WHERE id_cliente = ?""", (self.nome_cliente_Cli, self.telefone_limpo_Cli, self.email_Cli, id_edit_Cli,))
         self.con.commit()
         self.desconectar_bd()
         self.limpar_entry_C()
@@ -259,6 +286,42 @@ class Funcoes():
         nome_cliente_visual_Cli.set(self.nome_cliente_Cli)
         telefone_visual_Cli.set(self.telefone_Cli)
         email_visual_Cli.set(self.email_Cli)
+    #Função para formatar Telefone no cadastro de clientes
+    def formatar_telefone_Cli(self, event=None):
+        formatacao_telefone = self.entry_telefone_C.get()
+        num_telefone = re.sub(r"\D", "", formatacao_telefone)[:11]
+        if len(num_telefone) <= 2:
+            telefone_formatado = f"{num_telefone}"
+        elif len(num_telefone) <= 7:
+            telefone_formatado = f"({num_telefone[:2]}) {num_telefone[2:]}"
+        else:
+            telefone_formatado = f"({num_telefone[:2]}) {num_telefone[2:7]}-{num_telefone[7:]}"
+        self.entry_telefone_C.delete(0, END)
+        self.entry_telefone_C.insert(0, telefone_formatado)
+    #Função para formatar Telefone no cadastro de clientes
+    def formatar_telefone_edit_Cli(self, event=None):
+        formatacao_telefone = self.entry_telefone_edit_C.get()
+        num_telefone = re.sub(r"\D", "", formatacao_telefone)[:11]
+        if len(num_telefone) <= 2:
+            telefone_formatado = f"{num_telefone}"
+        elif len(num_telefone) <= 7:
+            telefone_formatado = f"({num_telefone[:2]}) {num_telefone[2:]}"
+        else:
+            telefone_formatado = f"({num_telefone[:2]}) {num_telefone[2:7]}-{num_telefone[7:]}"
+        self.entry_telefone_edit_C.delete(0, END)
+        self.entry_telefone_edit_C.insert(0, telefone_formatado)
+    #Função para formatar Data de Contato no cadastro de clientes
+    def formatar_data_contato_Cli(self, event=None):
+        formatacao_data_contato = self.entry_data_contato_C.get()
+        num_data_contato = re.sub(r"\D", "", formatacao_data_contato)[:8]
+        if len(num_data_contato) <= 4:
+            data_contato_formatado = f"{num_data_contato}"
+        elif len(num_data_contato) <= 6:
+            data_contato_formatado = f"{num_data_contato[:4]}-{num_data_contato[4:]}"
+        else:
+            data_contato_formatado = f"{num_data_contato[:4]}-{num_data_contato[4:6]}-{num_data_contato[6:]}"
+        self.entry_data_contato_C.delete(0, END)
+        self.entry_data_contato_C.insert(0, data_contato_formatado)
 #Funções do Serviço
     #Função do botão de multipla escolha da pesquisa de Serviços
     def bbt_pesquisa_2_mudou(self):
@@ -372,7 +435,10 @@ class Funcoes():
         self.desconectar_bd()
         if not cliente_existe:
             if self.entry_id_S.get():
-                self.entry_id_S.delete(len(self.id_passado_S), END)
+                if self.id_passado_S is not None:
+                    self.entry_id_S.delete(len(self.id_passado_S), END)
+                else:
+                    self.entry_id_S.delete(0, END)
         self.conectar_bd()
         self.cursor.execute(f"""SELECT nome_cliente FROM clientes
                                         WHERE id_cliente = ?; """, (self.entry_id_S.get(),))
@@ -433,6 +499,7 @@ class Funcoes():
 
 class Tela(Funcoes):
     def __init__(self):
+        self.id_passado_S = None
         self.root = root
         self.criar_tela()
         self.frames_da_tela()
@@ -500,11 +567,11 @@ class Tela(Funcoes):
         #Botão voltar
         self.bt_voltar_C = Button(self.frame_2, text="<", bd=3, bg="#ff0000", fg="black", font=("arial", 18, "bold"), command=self.sair_tela2)
         self.bt_voltar_C.place(relx=0.05, rely=0.87, relwidth=0.08, relheight=0.08)
-        #Botão de cadastro
+        #Botão de Cadastro
         self.bt_cadastrar_C = Button(self.frame_2, text="Cadastrar", bd=3, bg="#00ff2a", fg="black", font=("arial", 18, "bold"), command=self.entrar_tela3)
         self.bt_cadastrar_C.place(relx=0.75, rely=0.87, relwidth=0.2, relheight=0.08)
         #Botão de escolher o que vai pesquisar
-        self.values_bbt = ["ID", "Nome", "Telefone", "Email", "Data do cadastro"]
+        self.values_bbt = ["ID", "Nome", "Telefone", "Email", "Data do Cadastro"]
         self.value_unic_bbt = StringVar(value=self.values_bbt[0])
         self.bbt_escolher_pesquisa = ttk.Combobox(self.frame_2, textvariable=self.value_unic_bbt, values=self.values_bbt, font=("arial", 8, "bold"), state="readonly")
         self.bbt_escolher_pesquisa.place(relx=0.05, rely=0.05, relwidth=0.1, relheight=0.06)
@@ -523,7 +590,7 @@ class Tela(Funcoes):
         self.listaCli.heading("#2", text="Nome")
         self.listaCli.heading("#3", text="Telefone")
         self.listaCli.heading("#4", text="Email")
-        self.listaCli.heading("#5", text="Data do cadastro")
+        self.listaCli.heading("#5", text="Data do Cadastro")
 
         self.listaCli.column("#0", width=1, stretch=NO)
         self.listaCli.column("#1", width=30)
@@ -547,18 +614,20 @@ class Tela(Funcoes):
         self.bt_novo_C = Button(self.frame_3, text="Novo", bd=3, bg="#808080", fg="white", font=("arial", 15, "bold"), command=self.add_cliente_C)
         self.bt_novo_C.place(relx=0.8, rely=0.87, relwidth=0.15, relheight=0.08)
     def entry_tela_3(self):
-        #Entry da Data de cadastro
-        self.lb_data_cadastro_C = Label(self.frame_3, text="Data de cadastro", bg="#dfe3ee", fg="#1b1d1f")
-        self.lb_data_cadastro_C.place(relx=0.05, rely=0.255)
+        #Entry da Data de Contato
+        self.lb_data_contato_C = Label(self.frame_3, text="Data do Primeiro Contato", bg="#dfe3ee", fg="#1b1d1f")
+        self.lb_data_contato_C.place(relx=0.05, rely=0.255)
 
-        self.entry_data_cadastro_C = Entry(self.frame_3)
-        self.entry_data_cadastro_C.place(relx=0.05, rely=0.305, relwidth=0.425, relheight=0.05)
+        self.entry_data_contato_C = Entry(self.frame_3)
+        self.entry_data_contato_C.place(relx=0.05, rely=0.305, relwidth=0.425, relheight=0.05)
+        self.entry_data_contato_C.bind("<KeyRelease>", self.formatar_data_contato_Cli)
         #Entry do Telefone
         self.lb_telefone_C = Label(self.frame_3, text="Telefone", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_telefone_C.place(relx=0.525, rely=0.255)
 
         self.entry_telefone_C = Entry(self.frame_3)
         self.entry_telefone_C.place(relx=0.525, rely=0.305, relwidth=0.425, relheight=0.05)
+        self.entry_telefone_C.bind("<KeyRelease>", self.formatar_telefone_Cli)
         #Entry do Nome do cliente
         self.lb_nome_cliente_C = Label(self.frame_3, text="Nome do cliente", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_nome_cliente_C.place(relx=0.05, rely=0.385)
@@ -589,18 +658,24 @@ class Tela(Funcoes):
 
         self.lb2_id_visual_C = Label(self.frame_4, textvariable=id_visual_Cli, bg="#999999", fg="#1b1d1f", anchor="w")
         self.lb2_id_visual_C.place(relx=0.05, rely=0.305, relwidth=0.15, relheight=0.05)
-        #Label da Data de cadastro
-        self.lb_data_cadastro_visual_C = Label(self.frame_4, text="Data de cadastro", bg="#dfe3ee", fg="#1b1d1f")
+        #Label da Data de Cadastro
+        self.lb_data_cadastro_visual_C = Label(self.frame_4, text="Data de Cadastro", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_data_cadastro_visual_C.place(relx=0.25, rely=0.255)
 
         self.lb2_data_cadastro_visual_C = Label(self.frame_4, textvariable=data_cadastro_visual_Cli, bg="#999999", fg="#1b1d1f")
-        self.lb2_data_cadastro_visual_C.place(relx=0.25, rely=0.305, relwidth=0.25, relheight=0.05)
+        self.lb2_data_cadastro_visual_C.place(relx=0.25, rely=0.305, relwidth=0.15, relheight=0.05)
+        #Label da Data de Contato
+        self.lb_data_contato_visual_C = Label(self.frame_4, text="Data do Primeiro contato", bg="#dfe3ee", fg="#1b1d1f")
+        self.lb_data_contato_visual_C.place(relx=0.45, rely=0.255)
+
+        self.lb2_data_contato_visual_C = Label(self.frame_4, textvariable=data_contato_visual_Cli, bg="#999999", fg="#1b1d1f")
+        self.lb2_data_contato_visual_C.place(relx=0.45, rely=0.305, relwidth=0.15, relheight=0.05)
         #Label do Telefone
         self.lb_telefone_visual_C = Label(self.frame_4, text="Telefone", bg="#dfe3ee", fg="#1b1d1f")
-        self.lb_telefone_visual_C.place(relx=0.55, rely=0.255)
+        self.lb_telefone_visual_C.place(relx=0.72, rely=0.255)
 
         self.lb2_telefone_visual_C = Label(self.frame_4, textvariable=telefone_visual_Cli, bg="#999999", fg="#1b1d1f", anchor="w")
-        self.lb2_telefone_visual_C.place(relx=0.55, rely=0.305, relwidth=0.4, relheight=0.05)
+        self.lb2_telefone_visual_C.place(relx=0.72, rely=0.305, relwidth=0.23, relheight=0.05)
         #Label do Nome do cliente
         self.lb_nome_cliente_visual_C = Label(self.frame_4, text="Nome do cliente", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_nome_cliente_visual_C.place(relx=0.05, rely=0.385)
@@ -628,6 +703,7 @@ class Tela(Funcoes):
 
         self.entry_telefone_edit_C = Entry(self.frame_5)
         self.entry_telefone_edit_C.place(relx=0.05, rely=0.305, relwidth=0.9, relheight=0.05)
+        self.entry_telefone_edit_C.bind("<KeyRelease>", self.formatar_telefone_edit_Cli)
         #Entry do Nome do cliente
         self.lb_nome_cliente_edit_C = Label(self.frame_5, text="Nome do cliente", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_nome_cliente_edit_C.place(relx=0.05, rely=0.385)
