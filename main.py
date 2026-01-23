@@ -35,7 +35,7 @@ status_edit_Ser = ""
 data_criacao_edit_Ser = ""
 value_status_servico_unic_bbt_edit = StringVar()
 
-#Variáveis de Error
+#Variáveis de Error Clientes
 error_data_contato_Cli = StringVar()
 error_telefone_Cli = StringVar()
 error_nome_cliente_Cli = StringVar()
@@ -43,6 +43,13 @@ error_email_Cli = StringVar()
 error_telefone_edit_Cli = StringVar()
 error_nome_cliente_edit_Cli = StringVar()
 error_email_edit_Cli = StringVar()
+
+#Variáveis de Error Serviços
+error_id_Ser = StringVar()
+error_tipo_servico_Ser = StringVar()
+error_descricao_Ser = StringVar()
+error_tipo_servico_edit_Ser = StringVar()
+error_descricao_edit_Ser = StringVar()
 
 class Funcoes():
     #Bancos de Dados
@@ -443,19 +450,21 @@ class Funcoes():
         self.id_passado_S = ""
     #Função de Cadastrar um cliente
     def add_servico_S(self):
+        self.verif_error_entrys_cadastro_Ser()
         self.id_Ser = self.entry_id_S.get()
         self.descricao_Ser = self.entry_descricao_S.get()
         self.tipo_servico_Ser = self.entry_tipo_servico_S.get()
         self.status_Ser = self.value_status_servico_unic_bbt.get()
         self.data_criacao_Ser = date.today()
         self.conectar_bd()
-        if self.id_Ser!="":
+        if error_id_Ser.get()== "" and error_tipo_servico_Ser.get()== "" and error_descricao_Ser.get()== "":
             self.cursor.execute("""INSERT INTO servicos (id_cliente, tipo_servico, descricao, status, data_criacao)
                                 VALUES (?,?,?,?,?); """, (self.id_Ser, self.tipo_servico_Ser, self.descricao_Ser, self.status_Ser, self.data_criacao_Ser))
+            
+            self.limpar_entry_S()
         self.con.commit()
         self.desconectar_bd()
         self.preencher_lista_Ser()
-        self.limpar_entry_S()
     #Função de Duplo Click
     def DuploClickOnSer(self):
         global id_servico_edit_Ser, id_edit_Ser, tipo_servico_edit_Ser, descricao_edit_Ser, status_edit_Ser, data_criacao_edit_Ser
@@ -549,27 +558,63 @@ class Funcoes():
     #Função de Alterar informações do cliente
     def alterar_inf_Ser(self):
         global id_servico_edit_Ser, status_edit_Ser, tipo_servico_edit_Ser, descricao_edit_Ser
+        self.verif_error_entrys_edit_Ser()
         self.status_Ser = self.bbt_status_servico_edit.get()
         self.tipo_servico_Ser = self.entry_tipo_servico_edit_S.get()
         self.descricao_Ser = self.entry_descricao_edit_S.get()
         self.conectar_bd()
-        self.cursor.execute("""UPDATE servicos SET status = ?, tipo_servico = ?, descricao = ?
+        if error_tipo_servico_edit_Ser.get()== "" and error_descricao_edit_Ser.get()== "":
+            self.cursor.execute("""UPDATE servicos SET status = ?, tipo_servico = ?, descricao = ?
                             WHERE id_servico = ?""", (self.status_Ser, self.tipo_servico_Ser, self.descricao_Ser, id_servico_edit_Ser,))
+            self.sair_tela9()
+            self.limpar_entry_S()
+            status_edit_Ser = self.status_Ser
+            tipo_servico_edit_Ser = self.tipo_servico_Ser
+            descricao_edit_Ser = self.descricao_Ser
         self.con.commit()
         self.desconectar_bd()
-        self.limpar_entry_S()
         self.preencher_lista_Ser()
-        self.sair_tela9()
         status_visual_Ser.set(self.status_Ser)
         tipo_servico_visual_Ser.set(self.tipo_servico_Ser)
         descricao_visual_Ser.set(self.descricao_Ser)
-        status_edit_Ser = self.status_Ser
-        tipo_servico_edit_Ser = self.tipo_servico_Ser
-        descricao_edit_Ser = self.descricao_Ser
+    #Função para verificar se ocorreu algum erro nos Entrys do cadastro de serviços
+    def verif_error_entrys_cadastro_Ser(self):
+        if self.entry_id_S.get()== "":
+            error_id_Ser.set(value="ID não informado")
+        else:
+            error_id_Ser.set(value="")
+
+        if self.entry_tipo_servico_S.get()== "":
+            error_tipo_servico_Ser.set(value="Este campo deve estar preenchido")
+        else:
+            error_tipo_servico_Ser.set(value="")
+
+        if self.entry_descricao_S.get()== "":
+            error_descricao_Ser.set(value="Este campo deve estar preenchido")
+        else:
+            error_descricao_Ser.set(value="")
+    #Função para verificar se ocorreu algum erro nos Entrys do edit de serviços
+    def verif_error_entrys_edit_Ser(self):
+        if self.entry_tipo_servico_edit_S.get()== "":
+            error_tipo_servico_edit_Ser.set(value="Este campo deve estar preenchido")
+        else:
+            error_tipo_servico_edit_Ser.set(value="")
+
+        if self.entry_descricao_edit_S.get()== "":
+            error_descricao_edit_Ser.set(value="Este campo deve estar preenchido")
+        else:
+            error_descricao_edit_Ser.set(value="")
+
+#Variáveis de iniciação
+    def variaveis_iniciais(self):
+        self.id_passado_S = None
+        self.num_telefone = ""
+        self.num_telefone_edit = ""
+        self.num_data_contato = ""
 
 class Tela(Funcoes):
     def __init__(self):
-        self.id_passado_S = None
+        self.variaveis_iniciais()
         self.root = root
         self.criar_tela()
         self.frames_da_tela()
@@ -687,8 +732,6 @@ class Tela(Funcoes):
         #Entry da Data de Contato
         self.lb_data_contato_C = Label(self.frame_3, text="Data do Primeiro Contato", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_data_contato_C.place(relx=0.05, rely=0.255)
-        self.error_data_contato_C = Label(self.frame_3, textvariable=error_data_contato_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
-        self.error_data_contato_C.place(relx=0.05, rely=0.355)
 
         self.entry_data_contato_C = Entry(self.frame_3)
         self.entry_data_contato_C.place(relx=0.05, rely=0.305, relwidth=0.425, relheight=0.05)
@@ -696,8 +739,6 @@ class Tela(Funcoes):
         #Entry do Telefone
         self.lb_telefone_C = Label(self.frame_3, text="Telefone", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_telefone_C.place(relx=0.525, rely=0.255)
-        self.error_telefone_C = Label(self.frame_3, textvariable=error_telefone_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
-        self.error_telefone_C.place(relx=0.525, rely=0.355)
 
         self.entry_telefone_C = Entry(self.frame_3)
         self.entry_telefone_C.place(relx=0.525, rely=0.305, relwidth=0.425, relheight=0.05)
@@ -705,19 +746,28 @@ class Tela(Funcoes):
         #Entry do Nome do cliente
         self.lb_nome_cliente_C = Label(self.frame_3, text="Nome do cliente", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_nome_cliente_C.place(relx=0.05, rely=0.385)
-        self.error_nome_cliente_C = Label(self.frame_3, textvariable=error_nome_cliente_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
-        self.error_nome_cliente_C.place(relx=0.05, rely=0.485)
 
         self.entry_nome_cliente_C = Entry(self.frame_3)
         self.entry_nome_cliente_C.place(relx=0.05, rely=0.435, relwidth=0.9, relheight=0.05)
         #Entry do Email
         self.lb_email_C = Label(self.frame_3, text="Email", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_email_C.place(relx=0.05, rely=0.515)
-        self.error_email_C = Label(self.frame_3, textvariable=error_email_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
-        self.error_email_C.place(relx=0.05, rely=0.605)
 
         self.entry_email_C = Entry(self.frame_3)
         self.entry_email_C.place(relx=0.05, rely=0.565, relwidth=0.9, relheight=0.05)
+
+        #Mensagens de Erro
+        self.error_data_contato_C = Label(self.frame_3, textvariable=error_data_contato_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_data_contato_C.place(relx=0.05, rely=0.355)
+        
+        self.error_telefone_C = Label(self.frame_3, textvariable=error_telefone_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_telefone_C.place(relx=0.525, rely=0.355)
+        
+        self.error_nome_cliente_C = Label(self.frame_3, textvariable=error_nome_cliente_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_nome_cliente_C.place(relx=0.05, rely=0.485)
+        
+        self.error_email_C = Label(self.frame_3, textvariable=error_email_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_email_C.place(relx=0.05, rely=0.615)
     #Tela Visualização das Informações do cliente
     def botoes_tela_4(self):
         #Botão voltar
@@ -782,22 +832,26 @@ class Tela(Funcoes):
         self.entry_telefone_edit_C = Entry(self.frame_5)
         self.entry_telefone_edit_C.place(relx=0.05, rely=0.305, relwidth=0.9, relheight=0.05)
         self.entry_telefone_edit_C.bind("<KeyRelease>", self.formatar_telefone_edit_Cli)
-        self.error_telefone_edit_C = Label(self.frame_5, textvariable=error_telefone_edit_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"))
-        self.error_telefone_edit_C.place(relx=0.05, rely=0.355)
         #Entry do Nome do cliente
         self.lb_nome_cliente_edit_C = Label(self.frame_5, text="Nome do cliente", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_nome_cliente_edit_C.place(relx=0.05, rely=0.385)
 
         self.entry_nome_cliente_edit_C = Entry(self.frame_5)
         self.entry_nome_cliente_edit_C.place(relx=0.05, rely=0.435, relwidth=0.9, relheight=0.05)
-        self.error_nome_cliente_edit_C = Label(self.frame_5, textvariable=error_nome_cliente_edit_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"))
-        self.error_nome_cliente_edit_C.place(relx=0.05, rely=0.485)
         #Entry do Email
         self.lb_email_edit_C = Label(self.frame_5, text="Email", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_email_edit_C.place(relx=0.05, rely=0.515)
 
         self.entry_email_edit_C = Entry(self.frame_5)
         self.entry_email_edit_C.place(relx=0.05, rely=0.565, relwidth=0.9, relheight=0.05)
+
+        #Mensagens de Erro
+        self.error_telefone_edit_C = Label(self.frame_5, textvariable=error_telefone_edit_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"))
+        self.error_telefone_edit_C.place(relx=0.05, rely=0.355)
+        
+        self.error_nome_cliente_edit_C = Label(self.frame_5, textvariable=error_nome_cliente_edit_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"))
+        self.error_nome_cliente_edit_C.place(relx=0.05, rely=0.485)
+        
         self.error_email_edit_C = Label(self.frame_5, textvariable=error_email_edit_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"))
         self.error_email_edit_C.place(relx=0.05, rely=0.615)
 
@@ -886,6 +940,16 @@ class Tela(Funcoes):
 
         self.entry_descricao_S = Entry(self.frame_7)
         self.entry_descricao_S.place(relx=0.05, rely=0.565, relwidth=0.9, relheight=0.05)
+
+        #Mensagem de Erro
+        self.error_id_S = Label(self.frame_7, textvariable=error_id_Ser, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_id_S.place(relx=0.05, rely=0.355)
+        
+        self.error_tipo_servico_S = Label(self.frame_7, textvariable=error_tipo_servico_Ser, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_tipo_servico_S.place(relx=0.05, rely=0.485)
+        
+        self.error_descricao_S = Label(self.frame_7, textvariable=error_descricao_Ser, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_descricao_S.place(relx=0.05, rely=0.615)
     #Tela Visualização das Informações do serviço
     def botoes_tela_8(self):
         #Botão voltar
@@ -961,5 +1025,12 @@ class Tela(Funcoes):
 
         self.entry_descricao_edit_S = Entry(self.frame_9)
         self.entry_descricao_edit_S.place(relx=0.05, rely=0.565, relwidth=0.9, relheight=0.05)
+
+        #Mensagem de Erro
+        self.error_tipo_servico_edit_S = Label(self.frame_9, textvariable=error_tipo_servico_edit_Ser, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_tipo_servico_edit_S.place(relx=0.05, rely=0.485)
+        
+        self.error_descricao_edit_S = Label(self.frame_9, textvariable=error_descricao_edit_Ser, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_descricao_edit_S.place(relx=0.05, rely=0.615)
 
 Tela()
