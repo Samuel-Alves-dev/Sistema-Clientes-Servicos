@@ -35,6 +35,15 @@ status_edit_Ser = ""
 data_criacao_edit_Ser = ""
 value_status_servico_unic_bbt_edit = StringVar()
 
+#Variáveis de Error
+error_data_contato_Cli = StringVar()
+error_telefone_Cli = StringVar()
+error_nome_cliente_Cli = StringVar()
+error_email_Cli = StringVar()
+error_telefone_edit_Cli = StringVar()
+error_nome_cliente_edit_Cli = StringVar()
+error_email_edit_Cli = StringVar()
+
 class Funcoes():
     #Bancos de Dados
     def conectar_bd(self):
@@ -52,7 +61,7 @@ class Funcoes():
                             telefone TEXT NOT NULL CHECK
                                 (length(telefone) = 11),
                             email TEXT NOT NULL CHECK
-                                (email LIKE '%@%.com'),
+                                (email LIKE '%@%.%'),
                             data_cadastro TEXT NOT NULL,
                             data_contato TEXT CHECK
                                 (data_contato IS NULL
@@ -147,7 +156,7 @@ class Funcoes():
             self.bbt_pesquisa_selecionado = "telefone"
         elif self.bbt_pesquisa_selecionado== "Email":
             self.bbt_pesquisa_selecionado = "email"
-        elif self.bbt_pesquisa_selecionado== "Data de Cadastro":
+        elif self.bbt_pesquisa_selecionado== "Data do Cadastro":
             self.bbt_pesquisa_selecionado = "data_cadastro"
         return self.bbt_pesquisa_selecionado
     #Funções de preencher a tabela
@@ -186,23 +195,27 @@ class Funcoes():
         self.entry_data_contato_C.delete(0, END)
     #Função de Cadastrar um cliente
     def add_cliente_C(self):
+        self.padronizar_email_Cli()
+        self.verif_error_entrys_cadastro_Cli()
         self.nome_cliente_Cli = self.entry_nome_cliente_C.get()
         self.telefone_Cli = self.entry_telefone_C.get()
         self.telefone_limpo_Cli = ''.join(filter(str.isdigit, self.telefone_Cli))
         self.email_Cli = self.entry_email_C.get()
         self.data_contato_Cli = self.entry_data_contato_C.get()
-        self.data_contato_limpo_Cli = ''.join(filter(str.isdigit, self.data_contato_Cli))
         if self.data_contato_Cli== "":
-            self.data_contato_Cli = None
+            self.data_contato_limpo_Cli = None
+        else:
+            self.data_contato_limpo_Cli = ''.join(filter(str.isdigit, self.data_contato_Cli))
         self.data_cadastro_Cli = date.today()
         self.conectar_bd()
         if self.nome_cliente_Cli!="":
-            self.cursor.execute("""INSERT INTO clientes (nome_cliente, telefone, email, data_cadastro, data_contato)
+            if error_email_Cli.get()== "" and error_data_contato_Cli.get()== "":
+                self.cursor.execute("""INSERT INTO clientes (nome_cliente, telefone, email, data_cadastro, data_contato)
                                 VALUES (?,?,?,?,?); """, (self.nome_cliente_Cli, self.telefone_limpo_Cli, self.email_Cli, self.data_cadastro_Cli, self.data_contato_limpo_Cli))
+                self.limpar_entry_C()
         self.con.commit()
         self.desconectar_bd()
         self.preencher_lista_Cli()
-        self.limpar_entry_C()
     #Função de Duplo Click
     def DuploClickOnCli(self):
         global nome_cliente_edit_Cli, telefone_edit_Cli, email_edit_Cli, id_edit_Cli
@@ -270,58 +283,115 @@ class Funcoes():
         self.root.wait_window(self.tela_confirmar_deletar)
     #Função de Alterar informações do cliente
     def alterar_inf_Cli(self):
-        global id_edit_Cli
+        self.padronizar_email_edit_Cli()
+        self.verif_error_entrys_edit_Cli()
+        global id_edit_Cli, telefone_edit_Cli, nome_cliente_edit_Cli, email_edit_Cli
         self.nome_cliente_Cli = self.entry_nome_cliente_edit_C.get()
         self.telefone_Cli = self.entry_telefone_edit_C.get()
         self.telefone_limpo_Cli = ''.join(filter(str.isdigit, self.telefone_Cli))
         self.email_Cli = self.entry_email_edit_C.get()
         self.conectar_bd()
-        self.cursor.execute("""UPDATE clientes SET nome_cliente = ?, telefone = ?, email = ?
-                            WHERE id_cliente = ?""", (self.nome_cliente_Cli, self.telefone_limpo_Cli, self.email_Cli, id_edit_Cli,))
+        if error_email_edit_Cli.get()== "" and error_nome_cliente_edit_Cli.get()== "" and error_telefone_edit_Cli.get()== "":
+            self.cursor.execute("""UPDATE clientes SET nome_cliente = ?, telefone = ?, email = ?
+                                WHERE id_cliente = ?""", (self.nome_cliente_Cli, self.telefone_limpo_Cli, self.email_Cli, id_edit_Cli,))
+            self.limpar_entry_C()
+            self.sair_tela5()
+            telefone_edit_Cli = self.telefone_Cli
+            nome_cliente_edit_Cli = self.nome_cliente_Cli
+            email_edit_Cli = self.email_Cli
         self.con.commit()
         self.desconectar_bd()
-        self.limpar_entry_C()
         self.preencher_lista_Cli()
-        self.sair_tela5()
         nome_cliente_visual_Cli.set(self.nome_cliente_Cli)
         telefone_visual_Cli.set(self.telefone_Cli)
         email_visual_Cli.set(self.email_Cli)
     #Função para formatar Telefone no cadastro de clientes
     def formatar_telefone_Cli(self, event=None):
         formatacao_telefone = self.entry_telefone_C.get()
-        num_telefone = re.sub(r"\D", "", formatacao_telefone)[:11]
-        if len(num_telefone) <= 2:
-            telefone_formatado = f"{num_telefone}"
-        elif len(num_telefone) <= 7:
-            telefone_formatado = f"({num_telefone[:2]}) {num_telefone[2:]}"
+        self.num_telefone = re.sub(r"\D", "", formatacao_telefone)[:11]
+        if len(self.num_telefone) <= 2:
+            telefone_formatado = f"{self.num_telefone}"
+        elif len(self.num_telefone) <= 7:
+            telefone_formatado = f"({self.num_telefone[:2]}) {self.num_telefone[2:]}"
         else:
-            telefone_formatado = f"({num_telefone[:2]}) {num_telefone[2:7]}-{num_telefone[7:]}"
+            telefone_formatado = f"({self.num_telefone[:2]}) {self.num_telefone[2:7]}-{self.num_telefone[7:]}"
         self.entry_telefone_C.delete(0, END)
         self.entry_telefone_C.insert(0, telefone_formatado)
-    #Função para formatar Telefone no cadastro de clientes
+    #Função para formatar Telefone no edit de clientes
     def formatar_telefone_edit_Cli(self, event=None):
         formatacao_telefone = self.entry_telefone_edit_C.get()
-        num_telefone = re.sub(r"\D", "", formatacao_telefone)[:11]
-        if len(num_telefone) <= 2:
-            telefone_formatado = f"{num_telefone}"
-        elif len(num_telefone) <= 7:
-            telefone_formatado = f"({num_telefone[:2]}) {num_telefone[2:]}"
+        self.num_telefone_edit = re.sub(r"\D", "", formatacao_telefone)[:11]
+        if len(self.num_telefone_edit) <= 2:
+            telefone_formatado = f"{self.num_telefone_edit}"
+        elif len(self.num_telefone_edit) <= 7:
+            telefone_formatado = f"({self.num_telefone_edit[:2]}) {self.num_telefone_edit[2:]}"
         else:
-            telefone_formatado = f"({num_telefone[:2]}) {num_telefone[2:7]}-{num_telefone[7:]}"
+            telefone_formatado = f"({self.num_telefone_edit[:2]}) {self.num_telefone_edit[2:7]}-{self.num_telefone_edit[7:]}"
         self.entry_telefone_edit_C.delete(0, END)
         self.entry_telefone_edit_C.insert(0, telefone_formatado)
     #Função para formatar Data de Contato no cadastro de clientes
     def formatar_data_contato_Cli(self, event=None):
         formatacao_data_contato = self.entry_data_contato_C.get()
-        num_data_contato = re.sub(r"\D", "", formatacao_data_contato)[:8]
-        if len(num_data_contato) <= 4:
-            data_contato_formatado = f"{num_data_contato}"
-        elif len(num_data_contato) <= 6:
-            data_contato_formatado = f"{num_data_contato[:4]}-{num_data_contato[4:]}"
+        self.num_data_contato = re.sub(r"\D", "", formatacao_data_contato)[:8]
+        if len(self.num_data_contato) <= 4:
+            data_contato_formatado = f"{self.num_data_contato}"
+        elif len(self.num_data_contato) <= 6:
+            data_contato_formatado = f"{self.num_data_contato[:4]}-{self.num_data_contato[4:]}"
         else:
-            data_contato_formatado = f"{num_data_contato[:4]}-{num_data_contato[4:6]}-{num_data_contato[6:]}"
+            data_contato_formatado = f"{self.num_data_contato[:4]}-{self.num_data_contato[4:6]}-{self.num_data_contato[6:]}"
         self.entry_data_contato_C.delete(0, END)
         self.entry_data_contato_C.insert(0, data_contato_formatado)
+    #Função que garante o formato correto do email no cadastro de clientes
+    def padronizar_email_Cli(self):
+        padronizacao_email = self.entry_email_C.get().strip()
+        padrao_email = r'^[\w\.-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+$'
+        if padronizacao_email== "":
+            error_email_Cli.set(value="Este campo deve estar preenchido")
+        elif not re.fullmatch(padrao_email, padronizacao_email):
+            error_email_Cli.set(value="Email inválido! Digite no formato correto (Exemplo: teste@gmail.com)")
+        else:
+            error_email_Cli.set(value="")
+    #Função que garante o formato correto do email no edit de clientes
+    def padronizar_email_edit_Cli(self):
+        padronizacao_edit_email = self.entry_email_edit_C.get().strip()
+        padrao_email = r'^[\w\.-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+$'
+        if padronizacao_edit_email== "":
+            error_email_edit_Cli.set(value="Este campo deve estar preenchido")
+        elif not re.fullmatch(padrao_email, padronizacao_edit_email):
+            error_email_edit_Cli.set(value="Email inválido! Digite no formato correto (Exemplo: teste@gmail.com)")
+        else:
+            error_email_edit_Cli.set(value="")
+    #Função para verificar se ocorreu algum erro nos Entrys do cadastro de clientes
+    def verif_error_entrys_cadastro_Cli(self):
+        if len(self.num_data_contato) > 0 and len(self.num_data_contato) < 8:
+            error_data_contato_Cli.set(value="Este campo não está devidamente preenchido")
+        else:
+            error_data_contato_Cli.set(value="")
+
+        if len(self.num_telefone)== 0:
+            error_telefone_Cli.set(value="Este campo deve estar preenchido")
+        elif len(self.num_telefone) < 11:
+            error_telefone_Cli.set(value="Este campo não está devidamente preenchido")
+        else:
+            error_telefone_Cli.set(value="")
+
+        if self.entry_nome_cliente_C.get()== "":
+            error_nome_cliente_Cli.set(value="Este campo deve estar preenchido")
+        else:
+            error_nome_cliente_Cli.set(value="")
+    #Função para verificar se ocorreu algum erro nos Entrys do edit de clientes
+    def verif_error_entrys_edit_Cli(self):
+        if len(self.num_telefone_edit)== 0:
+            error_telefone_edit_Cli.set(value="Este campo deve estar preenchido")
+        elif len(self.num_telefone_edit) < 11:
+            error_telefone_edit_Cli.set(value="Este campo não está devidamente preenchido")
+        else:
+            error_telefone_edit_Cli.set(value="")
+
+        if self.entry_nome_cliente_edit_C.get()== "":
+            error_nome_cliente_edit_Cli.set(value="Este campo deve estar preenchido")
+        else:
+            error_nome_cliente_edit_Cli.set(value="")
 #Funções do Serviço
     #Função do botão de multipla escolha da pesquisa de Serviços
     def bbt_pesquisa_2_mudou(self):
@@ -368,7 +438,6 @@ class Funcoes():
         self.entry_id_S.delete(0, END)
         self.entry_descricao_S.delete(0, END)
         self.entry_tipo_servico_S.delete(0, END)
-        self.entry_data_criacao_S.delete(0, END)
         self.lb_nome_cliente_S.place_forget()
         self.lb2_nome_cliente_S.place_forget()
         self.id_passado_S = ""
@@ -378,7 +447,7 @@ class Funcoes():
         self.descricao_Ser = self.entry_descricao_S.get()
         self.tipo_servico_Ser = self.entry_tipo_servico_S.get()
         self.status_Ser = self.value_status_servico_unic_bbt.get()
-        self.data_criacao_Ser = self.entry_data_criacao_S.get()
+        self.data_criacao_Ser = date.today()
         self.conectar_bd()
         if self.id_Ser!="":
             self.cursor.execute("""INSERT INTO servicos (id_cliente, tipo_servico, descricao, status, data_criacao)
@@ -447,10 +516,8 @@ class Funcoes():
             nome_cliente_Ser.set(value=nome_cliente_Ser_confirmar[0])
         self.desconectar_bd()
         if self.entry_id_S.get():
-            self.lb_nome_cliente_S.place(relx=0.05, rely=0.125)
-            self.lb2_nome_cliente_S.place(relx=0.05, rely=0.175, relwidth=0.9, relheight=0.05)
+            self.lb2_nome_cliente_S.place(relx=0.3, rely=0.305, relwidth=0.65, relheight=0.05)
         else:
-            self.lb_nome_cliente_S.place_forget()
             self.lb2_nome_cliente_S.place_forget()
         self.id_passado_S = self.entry_id_S.get()
     #Função de Deletar cliente
@@ -481,7 +548,7 @@ class Funcoes():
         self.root.wait_window(self.tela_2_confirmar_deletar)
     #Função de Alterar informações do cliente
     def alterar_inf_Ser(self):
-        global id_servico_edit_Ser
+        global id_servico_edit_Ser, status_edit_Ser, tipo_servico_edit_Ser, descricao_edit_Ser
         self.status_Ser = self.bbt_status_servico_edit.get()
         self.tipo_servico_Ser = self.entry_tipo_servico_edit_S.get()
         self.descricao_Ser = self.entry_descricao_edit_S.get()
@@ -496,6 +563,9 @@ class Funcoes():
         status_visual_Ser.set(self.status_Ser)
         tipo_servico_visual_Ser.set(self.tipo_servico_Ser)
         descricao_visual_Ser.set(self.descricao_Ser)
+        status_edit_Ser = self.status_Ser
+        tipo_servico_edit_Ser = self.tipo_servico_Ser
+        descricao_edit_Ser = self.descricao_Ser
 
 class Tela(Funcoes):
     def __init__(self):
@@ -617,6 +687,8 @@ class Tela(Funcoes):
         #Entry da Data de Contato
         self.lb_data_contato_C = Label(self.frame_3, text="Data do Primeiro Contato", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_data_contato_C.place(relx=0.05, rely=0.255)
+        self.error_data_contato_C = Label(self.frame_3, textvariable=error_data_contato_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_data_contato_C.place(relx=0.05, rely=0.355)
 
         self.entry_data_contato_C = Entry(self.frame_3)
         self.entry_data_contato_C.place(relx=0.05, rely=0.305, relwidth=0.425, relheight=0.05)
@@ -624,6 +696,8 @@ class Tela(Funcoes):
         #Entry do Telefone
         self.lb_telefone_C = Label(self.frame_3, text="Telefone", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_telefone_C.place(relx=0.525, rely=0.255)
+        self.error_telefone_C = Label(self.frame_3, textvariable=error_telefone_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_telefone_C.place(relx=0.525, rely=0.355)
 
         self.entry_telefone_C = Entry(self.frame_3)
         self.entry_telefone_C.place(relx=0.525, rely=0.305, relwidth=0.425, relheight=0.05)
@@ -631,12 +705,16 @@ class Tela(Funcoes):
         #Entry do Nome do cliente
         self.lb_nome_cliente_C = Label(self.frame_3, text="Nome do cliente", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_nome_cliente_C.place(relx=0.05, rely=0.385)
+        self.error_nome_cliente_C = Label(self.frame_3, textvariable=error_nome_cliente_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_nome_cliente_C.place(relx=0.05, rely=0.485)
 
         self.entry_nome_cliente_C = Entry(self.frame_3)
         self.entry_nome_cliente_C.place(relx=0.05, rely=0.435, relwidth=0.9, relheight=0.05)
         #Entry do Email
         self.lb_email_C = Label(self.frame_3, text="Email", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_email_C.place(relx=0.05, rely=0.515)
+        self.error_email_C = Label(self.frame_3, textvariable=error_email_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_email_C.place(relx=0.05, rely=0.605)
 
         self.entry_email_C = Entry(self.frame_3)
         self.entry_email_C.place(relx=0.05, rely=0.565, relwidth=0.9, relheight=0.05)
@@ -704,18 +782,24 @@ class Tela(Funcoes):
         self.entry_telefone_edit_C = Entry(self.frame_5)
         self.entry_telefone_edit_C.place(relx=0.05, rely=0.305, relwidth=0.9, relheight=0.05)
         self.entry_telefone_edit_C.bind("<KeyRelease>", self.formatar_telefone_edit_Cli)
+        self.error_telefone_edit_C = Label(self.frame_5, textvariable=error_telefone_edit_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"))
+        self.error_telefone_edit_C.place(relx=0.05, rely=0.355)
         #Entry do Nome do cliente
         self.lb_nome_cliente_edit_C = Label(self.frame_5, text="Nome do cliente", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_nome_cliente_edit_C.place(relx=0.05, rely=0.385)
 
         self.entry_nome_cliente_edit_C = Entry(self.frame_5)
         self.entry_nome_cliente_edit_C.place(relx=0.05, rely=0.435, relwidth=0.9, relheight=0.05)
+        self.error_nome_cliente_edit_C = Label(self.frame_5, textvariable=error_nome_cliente_edit_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"))
+        self.error_nome_cliente_edit_C.place(relx=0.05, rely=0.485)
         #Entry do Email
         self.lb_email_edit_C = Label(self.frame_5, text="Email", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_email_edit_C.place(relx=0.05, rely=0.515)
 
         self.entry_email_edit_C = Entry(self.frame_5)
         self.entry_email_edit_C.place(relx=0.05, rely=0.565, relwidth=0.9, relheight=0.05)
+        self.error_email_edit_C = Label(self.frame_5, textvariable=error_email_edit_Cli, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"))
+        self.error_email_edit_C.place(relx=0.05, rely=0.615)
 
     #Tela Serviços
     def botoes_tela_6(self):
@@ -771,20 +855,17 @@ class Tela(Funcoes):
     def entry_tela_7(self):
         #Label do Nome do cliente através do ID
         self.lb_nome_cliente_S = Label(self.frame_7, text="Nome do Cliente", bg="#dfe3ee", fg="#1b1d1f")
-        self.lb2_nome_cliente_S = Label(self.frame_7, textvariable=nome_cliente_Ser, bg="#999999", fg="#1b1d1f", anchor="w")
+        self.lb_nome_cliente_S.place(relx=0.3, rely=0.255)
+        self.lb3_nome_cliente_S = Label(self.frame_7, bg="#ffffff")
+        self.lb3_nome_cliente_S.place(relx=0.3, rely=0.305, relwidth=0.65, relheight=0.05)
+        self.lb2_nome_cliente_S = Label(self.frame_7, textvariable=nome_cliente_Ser, bg="#FFFFFF", fg="#1b1d1f", anchor="w")
         #Entry do ID
         self.lb_id_S = Label(self.frame_7, text="ID", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_id_S.place(relx=0.05, rely=0.255)
 
         self.entry_id_S = Entry(self.frame_7)
-        self.entry_id_S.place(relx=0.05, rely=0.305, relwidth=0.425, relheight=0.05)
+        self.entry_id_S.place(relx=0.05, rely=0.305, relwidth=0.2, relheight=0.05)
         self.entry_id_S.bind("<KeyRelease>", self.id_cliente_existe)
-        #Entry da Data de Criação
-        self.lb_data_criacao_C = Label(self.frame_7, text="Data de Criação", bg="#dfe3ee", fg="#1b1d1f")
-        self.lb_data_criacao_C.place(relx=0.525, rely=0.255)
-
-        self.entry_data_criacao_S = Entry(self.frame_7)
-        self.entry_data_criacao_S.place(relx=0.525, rely=0.305, relwidth=0.425, relheight=0.05)
         #Entry do Tipo de Serviço
         self.lb_tipo_servico_S = Label(self.frame_7, text="Tipo de Serviço", bg="#dfe3ee", fg="#1b1d1f")
         self.lb_tipo_servico_S.place(relx=0.05, rely=0.385)
