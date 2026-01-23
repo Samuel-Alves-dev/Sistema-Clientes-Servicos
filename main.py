@@ -106,6 +106,10 @@ class Funcoes():
         self.entry_telefone_C.delete(0, END)
         self.entry_email_C.delete(0, END)
         self.entry_data_contato_C.delete(0, END)
+        error_data_contato_Cli.set(value="")
+        error_telefone_Cli.set(value="")
+        error_nome_cliente_Cli.set(value="")
+        error_email_Cli.set(value="")
     def sair_tela4(self):
         self.frame_4.place_forget()
         self.frame_2.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
@@ -121,6 +125,9 @@ class Funcoes():
         self.entry_telefone_edit_C.delete(0, END)
         self.entry_nome_cliente_edit_C.delete(0, END)
         self.entry_email_edit_C.delete(0, END)
+        error_telefone_edit_Cli.set(value="")
+        error_nome_cliente_edit_Cli.set(value="")
+        error_email_edit_Cli.set(value="")
     def entrar_tela6(self):
         self.frame_1.place_forget()
         self.frame_6.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
@@ -200,6 +207,10 @@ class Funcoes():
         self.entry_telefone_C.delete(0, END)
         self.entry_email_C.delete(0, END)
         self.entry_data_contato_C.delete(0, END)
+        # error_data_contato_Cli.set(value="")
+        # error_telefone_Cli.set(value="")
+        # error_nome_cliente_Cli.set(value="")
+        # error_email_Cli.set(value="")
     #Função de Cadastrar um cliente
     def add_cliente_C(self):
         self.padronizar_email_Cli()
@@ -375,7 +386,7 @@ class Funcoes():
         else:
             error_data_contato_Cli.set(value="")
 
-        if len(self.num_telefone)== 0:
+        if self.entry_telefone_C.get()== "":
             error_telefone_Cli.set(value="Este campo deve estar preenchido")
         elif len(self.num_telefone) < 11:
             error_telefone_Cli.set(value="Este campo não está devidamente preenchido")
@@ -388,7 +399,7 @@ class Funcoes():
             error_nome_cliente_Cli.set(value="")
     #Função para verificar se ocorreu algum erro nos Entrys do edit de clientes
     def verif_error_entrys_edit_Cli(self):
-        if len(self.num_telefone_edit)== 0:
+        if self.entry_telefone_edit_C.get()== "":
             error_telefone_edit_Cli.set(value="Este campo deve estar preenchido")
         elif len(self.num_telefone_edit) < 11:
             error_telefone_edit_Cli.set(value="Este campo não está devidamente preenchido")
