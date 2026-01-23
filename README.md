@@ -26,3 +26,8 @@ O LogiCore Solutions é um sistema de gerenciamento de clientes e serviços dese
 - Melhorias na experiência do usuário
 - Implementar a geração de relatórios
 - Exportação de dados (PDF ou CSV)
+
+## Considerações finais
+Este projeto foi desenvolvido ao longo de aproximadamente 32 horas de trabalho,
+incluindo planejamento, implementação, testes e correções de bugs.
+Atualmente o sistema encontra-se estável e funcional, atendendo à proposta inicial.
