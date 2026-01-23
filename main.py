@@ -335,8 +335,8 @@ class Funcoes():
         self.entry_telefone_C.insert(0, telefone_formatado)
     #Função para formatar Telefone no edit de clientes
     def formatar_telefone_edit_Cli(self, event=None):
-        formatacao_telefone = self.entry_telefone_edit_C.get()
-        self.num_telefone_edit = re.sub(r"\D", "", formatacao_telefone)[:11]
+        formatacao_telefone_edit = self.entry_telefone_edit_C.get()
+        self.num_telefone_edit = re.sub(r"\D", "", formatacao_telefone_edit)[:11]
         if len(self.num_telefone_edit) <= 2:
             telefone_formatado = f"{self.num_telefone_edit}"
         elif len(self.num_telefone_edit) <= 7:
@@ -383,7 +383,9 @@ class Funcoes():
             error_data_contato_Cli.set(value="Este campo não está devidamente preenchido")
         else:
             error_data_contato_Cli.set(value="")
-
+        
+        formatacao_telefone = self.entry_telefone_C.get()
+        self.num_telefone = re.sub(r"\D", "", formatacao_telefone)[:11]
         if self.entry_telefone_C.get()== "":
             error_telefone_Cli.set(value="Este campo deve estar preenchido")
         elif len(self.num_telefone) < 11:
@@ -397,6 +399,8 @@ class Funcoes():
             error_nome_cliente_Cli.set(value="")
     #Função para verificar se ocorreu algum erro nos Entrys do edit de clientes
     def verif_error_entrys_edit_Cli(self):
+        formatacao_telefone_edit = self.entry_telefone_edit_C.get()
+        self.num_telefone_edit = re.sub(r"\D", "", formatacao_telefone_edit)[:11]
         if self.entry_telefone_edit_C.get()== "":
             error_telefone_edit_Cli.set(value="Este campo deve estar preenchido")
         elif len(self.num_telefone_edit) < 11:
