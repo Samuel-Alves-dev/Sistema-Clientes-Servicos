@@ -207,10 +207,6 @@ class Funcoes():
         self.entry_telefone_C.delete(0, END)
         self.entry_email_C.delete(0, END)
         self.entry_data_contato_C.delete(0, END)
-        # error_data_contato_Cli.set(value="")
-        # error_telefone_Cli.set(value="")
-        # error_nome_cliente_Cli.set(value="")
-        # error_email_Cli.set(value="")
     #Função de Cadastrar um cliente
     def add_cliente_C(self):
         self.padronizar_email_Cli()
@@ -231,6 +227,7 @@ class Funcoes():
                 self.cursor.execute("""INSERT INTO clientes (nome_cliente, telefone, email, data_cadastro, data_contato)
                                 VALUES (?,?,?,?,?); """, (self.nome_cliente_Cli, self.telefone_limpo_Cli, self.email_Cli, self.data_cadastro_Cli, self.data_contato_limpo_Cli))
                 self.limpar_entry_C()
+                self.cliente_cadastrado_confirm()
         self.con.commit()
         self.desconectar_bd()
         self.preencher_lista_Cli()
@@ -314,6 +311,7 @@ class Funcoes():
                                 WHERE id_cliente = ?""", (self.nome_cliente_Cli, self.telefone_limpo_Cli, self.email_Cli, id_edit_Cli,))
             self.limpar_entry_C()
             self.sair_tela5()
+            self.cliente_editado_confirm()
             telefone_edit_Cli = self.telefone_Cli
             nome_cliente_edit_Cli = self.nome_cliente_Cli
             email_edit_Cli = self.email_Cli
@@ -410,6 +408,30 @@ class Funcoes():
             error_nome_cliente_edit_Cli.set(value="Este campo deve estar preenchido")
         else:
             error_nome_cliente_edit_Cli.set(value="")
+    #Função para mostrar que o cliente foi cadastrado
+    def cliente_cadastrado_confirm(self):
+        if self.cliente_cadastrado_C is not None and self.cliente_cadastrado_C.winfo_exists():
+            self.cliente_cadastrado_C.destroy()
+        self.cliente_cadastrado_C = Label(self.frame_3, text="Cliente Cadastrado!", bg="#dfe3ee", fg="#2bff00", font=("arial", 12, "bold"))
+        self.cliente_cadastrado_C.place(relx=0.35, rely=0.15, relwidth=0.3)
+        self.root.after(4000, self.esconder_cliente_cadastrado)
+    #Função para esconder que o cliente foi cadastrado
+    def esconder_cliente_cadastrado(self):
+        if self.cliente_cadastrado_C is not None and self.cliente_cadastrado_C.winfo_exists():
+            self.cliente_cadastrado_C.destroy()
+            self.cliente_cadastrado_C = None
+    #Função para mostrar que o cliente foi editado
+    def cliente_editado_confirm(self):
+        if self.cliente_editado_C is not None and self.cliente_editado_C.winfo_exists():
+            self.cliente_editado_C.destroy()
+        self.cliente_editado_C = Label(self.frame_4, text="Informações Editadas!", bg="#dfe3ee", fg="#2bff00", font=("arial", 12, "bold"))
+        self.cliente_editado_C.place(relx=0.35, rely=0.15, relwidth=0.3)
+        self.root.after(4000, self.esconder_cliente_editado)
+    #Função para esconder que o cliente foi editado
+    def esconder_cliente_editado(self):
+        if self.cliente_editado_C is not None and self.cliente_editado_C.winfo_exists():
+            self.cliente_editado_C.destroy()
+            self.cliente_editado_C = None
 #Funções do Serviço
     #Função do botão de multipla escolha da pesquisa de Serviços
     def bbt_pesquisa_2_mudou(self):
@@ -456,7 +478,6 @@ class Funcoes():
         self.entry_id_S.delete(0, END)
         self.entry_descricao_S.delete(0, END)
         self.entry_tipo_servico_S.delete(0, END)
-        self.lb_nome_cliente_S.place_forget()
         self.lb2_nome_cliente_S.place_forget()
         self.id_passado_S = ""
     #Função de Cadastrar um cliente
@@ -471,8 +492,8 @@ class Funcoes():
         if error_id_Ser.get()== "" and error_tipo_servico_Ser.get()== "" and error_descricao_Ser.get()== "":
             self.cursor.execute("""INSERT INTO servicos (id_cliente, tipo_servico, descricao, status, data_criacao)
                                 VALUES (?,?,?,?,?); """, (self.id_Ser, self.tipo_servico_Ser, self.descricao_Ser, self.status_Ser, self.data_criacao_Ser))
-            
             self.limpar_entry_S()
+            self.servico_cadastrado_confirm()
         self.con.commit()
         self.desconectar_bd()
         self.preencher_lista_Ser()
@@ -579,6 +600,7 @@ class Funcoes():
                             WHERE id_servico = ?""", (self.status_Ser, self.tipo_servico_Ser, self.descricao_Ser, id_servico_edit_Ser,))
             self.sair_tela9()
             self.limpar_entry_S()
+            self.servico_editado_confirm()
             status_edit_Ser = self.status_Ser
             tipo_servico_edit_Ser = self.tipo_servico_Ser
             descricao_edit_Ser = self.descricao_Ser
@@ -615,6 +637,30 @@ class Funcoes():
             error_descricao_edit_Ser.set(value="Este campo deve estar preenchido")
         else:
             error_descricao_edit_Ser.set(value="")
+    #Função para mostrar que o serviço foi cadastrado
+    def servico_cadastrado_confirm(self):
+        if self.servico_cadastrado_S is not None and self.servico_cadastrado_S.winfo_exists():
+            self.servico_cadastrado_S.destroy()
+        self.servico_cadastrado_S = Label(self.frame_7, text="Serviço Cadastrado!", bg="#dfe3ee", fg="#2bff00", font=("arial", 12, "bold"))
+        self.servico_cadastrado_S.place(relx=0.35, rely=0.15, relwidth=0.3)
+        self.root.after(4000, self.esconder_servico_cadastrado)
+    #Função para esconder que o serviço foi cadastrado
+    def esconder_servico_cadastrado(self):
+        if self.servico_cadastrado_S is not None and self.servico_cadastrado_S.winfo_exists():
+            self.servico_cadastrado_S.destroy()
+            self.servico_cadastrado_S = None
+    #Função para mostrar que o serviço foi editado
+    def servico_editado_confirm(self):
+        if self.servico_editado_S is not None and self.servico_editado_S.winfo_exists():
+            self.servico_editado_S.destroy()
+        self.servico_editado_S = Label(self.frame_8, text="Informações Editadas!", bg="#dfe3ee", fg="#2bff00", font=("arial", 12, "bold"))
+        self.servico_editado_S.place(relx=0.35, rely=0.15, relwidth=0.3)
+        self.root.after(4000, self.esconder_servico_editado)
+    #Função para esconder que o serviço foi editado
+    def esconder_servico_editado(self):
+        if self.servico_editado_S is not None and self.servico_editado_S.winfo_exists():
+            self.servico_editado_S.destroy()
+            self.servico_editado_S = None
 
 #Variáveis de iniciação
     def variaveis_iniciais(self):
@@ -622,6 +668,10 @@ class Funcoes():
         self.num_telefone = ""
         self.num_telefone_edit = ""
         self.num_data_contato = ""
+        self.cliente_cadastrado_C = None
+        self.cliente_editado_C = None
+        self.servico_cadastrado_S = None
+        self.servico_editado_S = None
 
 class Tela(Funcoes):
     def __init__(self):
