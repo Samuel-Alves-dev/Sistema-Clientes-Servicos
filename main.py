@@ -1,8 +1,10 @@
 from tkinter import *
 from tkinter import ttk
-import sqlite3 as sq
 from datetime import date
 import re
+import email_config as email
+import relatorio_pdf as relpdf
+import smtplib
 
 root = Tk()
 
@@ -51,10 +53,17 @@ error_descricao_Ser = StringVar()
 error_tipo_servico_edit_Ser = StringVar()
 error_descricao_edit_Ser = StringVar()
 
+#Variáveis de Error Relatório
+error_nome_funcionario = StringVar()
+nome_funcionario = ""
+error_email_remetente = StringVar()
+error_email_destinatario = StringVar()
+error_app_password = StringVar()
+
 class Funcoes():
     #Bancos de Dados
     def conectar_bd(self):
-        self.con = sq.connect("sistema.db")
+        self.con = relpdf.conectar_banco()
         self.con.execute("PRAGMA foreign_keys = ON")
         self.cursor = self.con.cursor()
     def desconectar_bd(self):
@@ -84,6 +93,16 @@ class Funcoes():
                             data_criacao TEXT NOT NULL,
                             FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
                             );""")
+        #Criar tabela email
+        self.cursor.execute("""CREATE TABLE IF NOT EXISTS emails_registrados (
+                            id_email INTEGER PRIMARY KEY,
+                            remetente TEXT NOT NULL CHECK
+                                (remetente LIKE '%@%.%'),
+                            destinatario TEXT NOT NULL CHECK
+                                (destinatario LIKE '%@%.%'),
+                            app_password TEXT NOT NULL CHECK
+                                (length(app_password) = 16)
+                            );""")
         self.con.commit()
         self.desconectar_bd()
     #Funções de mudança de tela
@@ -91,10 +110,14 @@ class Funcoes():
         self.frame_1.place_forget()
         self.frame_2.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
         self.preencher_lista_Cli()
+        self.lb_menu_principal.place_forget()
+        self.lb2_menu_principal.place_forget()
     def sair_tela2(self):
         self.frame_2.place_forget()
         self.frame_1.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
         self.pesquisar_C.delete(0, END)
+        self.lb_menu_principal.place(relx=0.02, rely=0.15, relwidth=0.96, relheight=0.1)
+        self.lb2_menu_principal.place(relx=0.02, rely=0.25, relwidth=0.96, relheight=0.05)
     def entrar_tela3(self):
         self.frame_2.place_forget()
         self.frame_3.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
@@ -132,10 +155,14 @@ class Funcoes():
         self.frame_1.place_forget()
         self.frame_6.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
         self.preencher_lista_Ser()
+        self.lb_menu_principal.place_forget()
+        self.lb2_menu_principal.place_forget()
     def sair_tela6(self):
         self.frame_6.place_forget()
         self.frame_1.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
         self.pesquisar_S.delete(0, END)
+        self.lb_menu_principal.place(relx=0.02, rely=0.15, relwidth=0.96, relheight=0.1)
+        self.lb2_menu_principal.place(relx=0.02, rely=0.25, relwidth=0.96, relheight=0.05)
     def entrar_tela7(self):
         self.frame_6.place_forget()
         self.frame_7.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
@@ -159,6 +186,22 @@ class Funcoes():
         self.frame_8.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
         self.entry_tipo_servico_edit_S.delete(0, END)
         self.entry_descricao_edit_S.delete(0, END)
+    def entrar_tela10(self):
+        self.frame_1.place_forget()
+        self.frame_10.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
+        self.lb_menu_principal.place_forget()
+        self.lb2_menu_principal.place_forget()
+    def sair_tela10(self):
+        self.frame_10.place_forget()
+        self.frame_1.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
+        self.lb_menu_principal.place(relx=0.02, rely=0.15, relwidth=0.96, relheight=0.1)
+        self.lb2_menu_principal.place(relx=0.02, rely=0.25, relwidth=0.96, relheight=0.05)
+    def entrar_tela11(self):
+        self.frame_10.place_forget()
+        self.frame_11.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
+    def sair_tela11(self):
+        self.frame_11.place_forget()
+        self.frame_10.place(relx=0.02,rely=0.02,relwidth=0.96, relheight=0.96)
     #Função do botão de multipla escolha da pesquisa
     def bbt_pesquisa_mudou(self):
         self.bbt_pesquisa_selecionado = self.value_unic_bbt.get()
@@ -666,6 +709,153 @@ class Funcoes():
             self.servico_editado_S.destroy()
             self.servico_editado_S = None
 
+#Funções do Relatório
+    #Função de enviar relatório
+    def enviar_rel(self):
+        self.verif_error_entrys_Re()
+        if error_nome_funcionario.get()== "":
+            global nome_funcionario
+            nome_funcionario = self.entry_nome_funcionario_R.get()
+            relpdf.gerar_pdf(nome_funcionario)
+            try:
+                email.enviar_email()
+            except:
+                self.cadastrar_emails()
+            self.sair_tela11()
+            self.entry_nome_funcionario_R.delete(0, END)
+            self.relatorio_enviado_confirm()
+    #Função para verificar se ocorreu algum erro nos Entrys do relatório
+    def verif_error_entrys_Re(self):
+        if self.entry_nome_funcionario_R.get()== "":
+            error_nome_funcionario.set(value="Este campo deve estar preenchido")
+        else:
+            error_nome_funcionario.set(value="")
+    #Função para mostrar que o relatório foi enviado
+    def relatorio_enviado_confirm(self):
+        if self.relatorio_enviado is not None and self.relatorio_enviado.winfo_exists():
+            self.relatorio_enviado.destroy()
+        self.relatorio_enviado = Label(self.frame_10, text="Relatório Enviado!", bg="#dfe3ee", fg="#2bff00", font=("arial", 15, "bold"))
+        self.relatorio_enviado.place(relx=0.35, rely=0.75, relwidth=0.3)
+        self.root.after(4000, self.esconder_relatorio_enviado)
+    #Função para esconder que o relatório foi enviado
+    def esconder_relatorio_enviado(self):
+        if self.relatorio_enviado is not None and self.relatorio_enviado.winfo_exists():
+            self.relatorio_enviado.destroy()
+            self.relatorio_enviado = None
+    #Função que garante o formato correto do email no cadastro de email
+    def testar_emails(self):
+        padronizacao_email_remetente = self.entry_remetente.get().strip()
+        padronizacao_email_destinatario = self.entry_destinatario.get().strip()
+        padrao_email = r'^[\w\.-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+$'
+        if padronizacao_email_remetente== "":
+            error_email_remetente.set(value="Este campo deve estar preenchido")
+        elif not re.fullmatch(padrao_email, padronizacao_email_remetente):
+            error_email_remetente.set(value="Email inválido! Digite no formato correto (Exemplo: teste@gmail.com)")
+        else:
+            error_email_remetente.set(value="")
+        
+        if padronizacao_email_destinatario== "":
+            error_email_destinatario.set(value="Este campo deve estar preenchido")
+        elif not re.fullmatch(padrao_email, padronizacao_email_destinatario):
+            error_email_destinatario.set(value="Email inválido! Digite no formato correto (Exemplo: teste@gmail.com)")
+        else:
+            error_email_destinatario.set(value="")
+    #Função que manda a mensagem de erro do App Password
+    def testar_app_password(self):
+        formatacao_app_password = self.entry_app_password.get()
+        self.caracteres_app_password = re.sub(r"[^a-zÀ-ÿ]", "", formatacao_app_password)[:16]
+        if self.entry_app_password.get()== "":
+            error_app_password.set(value="Este campo deve estar preenchido")
+        elif len(self.caracteres_app_password) < 16:
+            error_app_password.set(value="Este campo não está devidamente preenchido")
+        else:
+            error_app_password.set(value="")
+    #Função que garante a formatação correta do App Password
+    def app_password_formatacao (self, event):
+        formatacao_app_password = self.entry_app_password.get()
+        self.caracteres_app_password_formatacao = re.sub(r"[^a-zÀ-ÿ]", "", formatacao_app_password)[:16]
+        if self.entry_app_password.get()== "":
+            app_password = ""
+        elif len(self.caracteres_app_password_formatacao) <= 4:
+            app_password = f"{self.caracteres_app_password_formatacao[:4]}"
+        elif len(self.caracteres_app_password_formatacao) <= 8:
+            app_password = f"{self.caracteres_app_password_formatacao[:4]} {self.caracteres_app_password_formatacao[4:8]}"
+        elif len(self.caracteres_app_password_formatacao) <= 12:
+            app_password = f"{self.caracteres_app_password_formatacao[:4]} {self.caracteres_app_password_formatacao[4:8]} {self.caracteres_app_password_formatacao[8:12]}"
+        else:
+            app_password = f"{self.caracteres_app_password_formatacao[:4]} {self.caracteres_app_password_formatacao[4:8]} {self.caracteres_app_password_formatacao[8:12]} {self.caracteres_app_password_formatacao[12:]}"
+        
+        self.entry_app_password.delete(0, END)
+        self.entry_app_password.insert(0, app_password)
+    def testar_enviar_infs(self):
+        if error_email_remetente.get()== "" and error_email_destinatario.get()== "" and error_app_password.get()== "":
+            try:
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                    server.login(self.entry_remetente.get(), self.entry_app_password.get())
+                return True
+            except Exception as e:
+                return False
+    def enviar_infs(self):
+        self.testar_emails()
+        self.testar_app_password()
+        self.testar = self.testar_enviar_infs()
+        if self.testar:
+            app_password_formatacao = re.sub(r"[^a-zÀ-ÿ]", "", self.entry_app_password.get())[:16]
+            self.conectar_bd()
+            self.cursor.execute("""DELETE FROM emails_registrados""")
+            self.cursor.execute("""INSERT INTO emails_registrados (remetente, destinatario, app_password)
+                                VALUES (?,?,?); """, (self.entry_remetente.get(), self.entry_destinatario.get(), app_password_formatacao))
+            self.con.commit()
+            self.desconectar_bd()
+            email.enviar_email()
+            self.tela_cadastrar_emails.destroy()
+        else:
+            if error_email_remetente.get()== "" and error_email_destinatario.get()== "" and error_app_password.get()== "":
+                self.infs_invalidas_confirm()
+    #Função para mostrar que as informações de cadastro de email estão inválidas
+    def infs_invalidas_confirm(self):
+        if self.infs_invalidas is not None and self.infs_invalidas.winfo_exists():
+            self.infs_invalidas.destroy()
+        self.infs_invalidas = Label(self.tela_cadastrar_emails, text="Informações Inválidas!", bg="#ffffff", fg="#ff0000", font=("arial", 12, "bold"))
+        self.infs_invalidas.place(relx=0.3, rely=0.9, relwidth=0.4)
+        self.tela_cadastrar_emails.after(4000, self.esconder_infs_invalidas)
+    #Função para esconder que as informações de cadastro de email estão inválidas
+    def esconder_infs_invalidas(self):
+        if self.infs_invalidas is not None and self.infs_invalidas.winfo_exists():
+            self.infs_invalidas.destroy()
+            self.infs_invalidas = None
+    #Função que faz com que, caso não tenha emails registrados, você mesmo registra
+    def cadastrar_emails(self):
+        self.tela_cadastrar_emails = Toplevel(self.root, bg="#ffffff")
+        if self.testar== False:
+            self.tela_cadastrar_emails.protocol("WM_DELETE_WINDOW", lambda: None)
+        self.tela_cadastrar_emails.title("Cadastrar Emails")
+        self.tela_cadastrar_emails.geometry("500x300")
+        self.tela_cadastrar_emails.resizable(False, False)
+        self.tela_cadastrar_emails.transient(self.root)
+        self.tela_cadastrar_emails.grab_set()
+
+        Label(self.tela_cadastrar_emails, text="Email do Remetente", bg="#FFFFFF").place(relx=0.05,rely=0.05)
+        self.entry_remetente = Entry(self.tela_cadastrar_emails, bg="#FFFFFF", fg="black")
+        self.entry_remetente.place(relx=0.05, rely=0.13, relwidth=0.9, relheight=0.05)
+        Label(self.tela_cadastrar_emails, textvariable=error_email_remetente, bg="#ffffff", fg="#ff0000", font=("arial", 8, "bold")).place(relx=0.05,rely=0.18)
+
+        Label(self.tela_cadastrar_emails, text="Email do Destinatário", bg="#FFFFFF").place(relx=0.05,rely=0.23)
+        self.entry_destinatario = Entry(self.tela_cadastrar_emails, bg="#FFFFFF", fg="black")
+        self.entry_destinatario.place(relx=0.05, rely=0.31, relwidth=0.9, relheight=0.05)
+        Label(self.tela_cadastrar_emails, textvariable=error_email_destinatario, bg="#ffffff", fg="#ff0000", font=("arial", 8, "bold")).place(relx=0.05,rely=0.36)
+
+        Label(self.tela_cadastrar_emails, text="App Password do Remetente", bg="#FFFFFF").place(relx=0.05,rely=0.41)
+        self.entry_app_password = Entry(self.tela_cadastrar_emails, bg="#FFFFFF", fg="black")
+        self.entry_app_password.place(relx=0.05, rely=0.49, relwidth=0.9, relheight=0.05)
+        Label(self.tela_cadastrar_emails, textvariable=error_app_password, bg="#ffffff", fg="#ff0000", font=("arial", 8, "bold")).place(relx=0.05,rely=0.54)
+        self.entry_app_password.bind("<KeyRelease>", self.app_password_formatacao)
+
+        self.bt_enviar_infs = Button(self.tela_cadastrar_emails, text="Enviar", bg="#808080", fg="white", command=self.enviar_infs)
+        self.bt_enviar_infs.place(relx=0.35, rely=0.65, relwidth=0.3, relheight=0.2)
+
+        self.root.wait_window(self.tela_cadastrar_emails)
+
 #Variáveis de iniciação
     def variaveis_iniciais(self):
         self.id_passado_S = None
@@ -676,6 +866,9 @@ class Funcoes():
         self.cliente_editado_C = None
         self.servico_cadastrado_S = None
         self.servico_editado_S = None
+        self.relatorio_enviado = None
+        self.testar = False
+        self.infs_invalidas = None
 
 class Tela(Funcoes):
     def __init__(self):
@@ -683,6 +876,7 @@ class Tela(Funcoes):
         self.root = root
         self.criar_tela()
         self.frames_da_tela()
+        self.label_tela1()
         self.botoes_tela_1()
         #tela clientes
         self.botoes_tela_2()
@@ -714,6 +908,13 @@ class Tela(Funcoes):
         #tela de alteração
         self.botoes_tela_9()
         self.entry_tela_9()
+        #tela de Relatório
+        self.label_tela10()
+        self.botoes_tela10()
+        #tela de confirmar Relatório
+        self.label_tela11()
+        self.entry_tela11()
+        self.botoes_tela11()
         self.root.mainloop()
     def criar_tela(self):
         self.root.title("Gerenciador da Empresa")
@@ -733,14 +934,27 @@ class Tela(Funcoes):
         self.frame_7 = Frame(self.root,bd=4,bg="#dfe3ee", highlightbackground="#2C2C2C", highlightthickness=3)
         self.frame_8 = Frame(self.root,bd=4,bg="#dfe3ee", highlightbackground="#2C2C2C", highlightthickness=3)
         self.frame_9 = Frame(self.root,bd=4,bg="#dfe3ee", highlightbackground="#2C2C2C", highlightthickness=3)
+        self.frame_10 = Frame(self.root,bd=4,bg="#dfe3ee", highlightbackground="#2C2C2C", highlightthickness=3)
+        self.frame_11 = Frame(self.root,bd=4,bg="#dfe3ee", highlightbackground="#2C2C2C", highlightthickness=3)
     #Tela Menu Principal
+    def label_tela1(self):
+        #Label do Menu
+        self.lb_menu_principal = Label(self.root, text="Gerenciador da Empresa", bg="#2C2C2C", fg="#ffffff", font=("arial", 20, "bold"))
+        self.lb_menu_principal.place(relx=0.02, rely=0.15, relwidth=0.96, relheight=0.1)
+        self.lb2_menu_principal = Label(self.root, text="Menu Principal", bg="#2C2C2C", fg="#ffffff", font=("arial", 12, "bold"))
+        self.lb2_menu_principal.place(relx=0.02, rely=0.25, relwidth=0.96, relheight=0.05)
+        self.lb_criador = Label(self.frame_1, text="Desenvolvido por: Samuel Alves dos Santos de Oliveira", bg="#dfe3ee", fg="#000000", font=("arial", 7, "bold"), anchor="w")
+        self.lb_criador.place(relx=0, rely=0.95, relheight=0.05)
     def botoes_tela_1(self):
         #Botão cliente
         self.bt_cliente = Button(self.frame_1, text="Clientes", bd=3, bg="#ffffff", fg="black", font=("arial", 18, "bold"), command=self.entrar_tela2)
-        self.bt_cliente.place(relx=0.05, rely=0.05, relwidth=0.2, relheight=0.15)
+        self.bt_cliente.place(relx=0.1, rely=0.425, relwidth=0.2, relheight=0.15)
         #Botão serviços
         self.bt_servico = Button(self.frame_1, text="Serviços", bd=3, bg="#ffffff", fg="black", font=("arial", 18, "bold"), command=self.entrar_tela6)
-        self.bt_servico.place(relx=0.3, rely=0.05, relwidth=0.2, relheight=0.15)
+        self.bt_servico.place(relx=0.4, rely=0.425, relwidth=0.2, relheight=0.15)
+        #Botão Relatório
+        self.bt_relatorio = Button(self.frame_1, text="Relatório", bd=3, bg="#ffffff", fg="black", font=("arial", 18, "bold"), command=self.entrar_tela10)
+        self.bt_relatorio.place(relx=0.7, rely=0.425, relwidth=0.2, relheight=0.15)
     
     #Tela Clientes
     def botoes_tela_2(self):
@@ -1097,5 +1311,40 @@ class Tela(Funcoes):
         
         self.error_descricao_edit_S = Label(self.frame_9, textvariable=error_descricao_edit_Ser, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
         self.error_descricao_edit_S.place(relx=0.05, rely=0.615)
+    
+    #Tela Relatório
+    def label_tela10(self):
+        #Label perguntando se quer gerar um PDF com o relatório
+        self.lb_gerar_rel = Label(self.frame_10, text=f"Deseja gerar o PDF do Relatório de hoje?", bg="#dfe3ee", fg="#1b1d1f", font=("arial", 15, "bold"))
+        self.lb_gerar_rel.place(relx=0.1, rely=0.3, relwidth=0.8, relheight=0.15)
+    def botoes_tela10(self):
+        #Botão voltar
+        self.bt_voltar_R = Button(self.frame_10, text="<", bd=3, bg="#ff0000", fg="black", font=("arial", 18, "bold"), command=self.sair_tela10)
+        self.bt_voltar_R.place(relx=0.05, rely=0.87, relwidth=0.08, relheight=0.08)
+        #Botão Gerar PDF
+        self.bt_gerar_pdf_R = Button(self.frame_10, text="Gerar PDF", bd=3, bg="#808080", fg="white", font=("arial", 15, "bold"), command=self.entrar_tela11)
+        self.bt_gerar_pdf_R.place(relx=0.35, rely=0.47, relwidth=0.3, relheight=0.1)
+    #Tela de confirmação
+    def label_tela11(self):
+        #Label confirmando que o PDF foi gerado
+        self.lb_confirmar_rel = Label(self.frame_11, text="""Quase Pronto para Enviar!
+Digite o Nome do Funcionário Responsável""",
+        bg="#dfe3ee", fg="#1b1d1f", font=("arial", 15, "bold"))
+        self.lb_confirmar_rel.place(relx=0.1, rely=0.3, relwidth=0.8, relheight=0.15)
+    def entry_tela11(self):
+        #Entry do nome do funcionário responsável pelo envio do Relatório
+        self.entry_nome_funcionario_R = Entry(self.frame_11)
+        self.entry_nome_funcionario_R.place(relx=0.1, rely=0.45, relwidth=0.8, relheight=0.05)
+
+        #mensagem de erro
+        self.error_nome_funcionario_R = Label(self.frame_11, textvariable=error_nome_funcionario, bg="#dfe3ee", fg="#ff0000", font=("arial", 8, "bold"), anchor="w")
+        self.error_nome_funcionario_R.place(relx=0.1, rely=0.5)
+    def botoes_tela11(self):
+        #Botão voltar
+        self.bt_voltar_R = Button(self.frame_11, text="<", bd=3, bg="#ff0000", fg="black", font=("arial", 18, "bold"), command=self.sair_tela11)
+        self.bt_voltar_R.place(relx=0.05, rely=0.87, relwidth=0.08, relheight=0.08)
+        #Botão Enviar PDF
+        self.bt_enviar_rel_R = Button(self.frame_11, text="Enviar Relatório", bd=3, bg="#808080", fg="white", font=("arial", 15, "bold"), command=self.enviar_rel)
+        self.bt_enviar_rel_R.place(relx=0.35, rely=0.6, relwidth=0.3, relheight=0.1)
 
 Tela()

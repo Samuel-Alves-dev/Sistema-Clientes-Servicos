@@ -1,33 +1,106 @@
 # LogiCore Solutions
 
-**Observação:** O nome da empresa apresentado no projeto é fictício.  
-O sistema foi desenvolvido com foco educacional, utilizando conceitos e estruturas que podem ser aplicados em cenários reais.
+Sistema de gerenciamento de **Clientes e Serviços**, com geração automática de **relatórios em PDF** e envio por **email**, desenvolvido em Python para fins educacionais.
 
-## Sobre o projeto
-O LogiCore Solutions é um sistema de gerenciamento de clientes e serviços desenvolvido em Python utilizando Tkinter e SQLite3.
+---
 
-## Funcionalidades
+## 📌 Sobre o projeto
+
+O **LogiCore Solutions** é um sistema desktop desenvolvido em Python com o objetivo de simular um sistema real de gestão empresarial, permitindo:
+
 - Cadastro, edição e exclusão de clientes
-- Visualização de clientes com duplo clique
-- Cadastro e gerenciamento de serviços
-- Associação de serviços a clientes
-- Confirmação de exclusão com bloqueio da interface
-- Banco de dados relacional (SQLite)
+- Cadastro, edição e exclusão de serviços
+- Validação e formatação automática de dados
+- Geração de relatórios profissionais em PDF
+- Envio automático de relatórios por email
+- Histórico organizado de relatórios gerados
 
-## Tecnologias utilizadas
-- Python
-- Tkinter
-- SQLite
+Este projeto foi desenvolvido com foco em **aprendizado prático**, organização de código e boas práticas.
 
-## Status do projeto
-✔️ Concluído (versão inicial)
+---
 
-## Próximos passos
-- Melhorias na experiência do usuário
-- Implementar a geração de relatórios
-- Exportação de dados (PDF ou CSV)
+## ⚙️ Funcionalidades
 
-## Considerações finais
-Este projeto foi desenvolvido ao longo de aproximadamente 32 horas de trabalho,
-incluindo planejamento, implementação, testes e correções de bugs.
-Atualmente o sistema encontra-se estável e funcional, atendendo à proposta inicial.
+### 👥 Clientes
+- Cadastro de clientes
+- Edição e exclusão
+- Validação de:
+  - Nome
+  - Telefone (com formatação automática)
+  - Email (com verificação de padrão)
+
+### 🛠️ Serviços
+- Cadastro de serviços vinculados a clientes
+- Status do serviço
+- Edição e exclusão
+- Confirmação antes da exclusão
+
+### 📄 Relatórios
+- Geração automática de relatório em PDF
+- Relatório contém:
+  - Data e hora de geração
+  - Nome do funcionário responsável
+  - Total de clientes cadastrados
+  - Total de serviços cadastrados
+  - Lista de clientes com seus respectivos serviços
+- Histórico de relatórios organizado por data
+
+### ✉️ Envio por Email
+- Envio automático do relatório por email
+- Sistema solicita:
+  - Email do remetente
+  - Email do destinatário
+  - App Password do email
+- As informações são salvas no banco de dados e reutilizadas
+- Código sensível de email não é versionado no GitHub
+
+---
+
+## 🛠️ Tecnologias utilizadas
+
+- **Python 3**
+- **Tkinter** – Interface gráfica
+- **SQLite3** – Banco de dados
+- **ReportLab** – Geração de PDFs
+- **smtplib / email.message** – Envio de emails
+- **Git & GitHub** – Controle de versão
+
+---
+
+## ▶️ Como executar o projeto
+
+1. Clone o repositório:
+```bash
+git clone https://github.com/seu-usuario/Sistema-Clientes-Servicos.git
+```
+
+2. Acesse a pasta do projeto:
+cd Sistema-Clientes-Servicos
+
+3. Execute o sistema:
+python main.py
+
+**Certifique-se de ter o Python 3 instalado.**
+
+## 📄 Relatórios
+- Os relatórios são gerados em formato PDF
+- São armazenados automaticamente na pasta historico
+- Cada relatório possui nome único baseado em data e hora
+
+## 🔐 Segurança e Email
+- Informações sensíveis (email e App Password) não estão versionadas no GitHub
+- O sistema solicita os dados apenas uma vez e salva no banco de dados local
+
+## ⚠️ Observações importantes
+- **Este projeto utiliza nomes fictícios**
+- **Desenvolvido exclusivamente para fins educacionais**
+- **Não é recomendado para uso em produção sem ajustes de segurança**
+
+## 📈 Status do projeto
+✅ Projeto finalizado – Versão 1.0
+
+Tempo total de desenvolvimento: 46 horas
+
+## 👨‍💻 Autor
+*Desenvolvido por Samuel Alves*
+*Projeto criado para estudo, prática e portfólio em Python.*
