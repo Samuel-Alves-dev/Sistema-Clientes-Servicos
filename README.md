@@ -103,4 +103,5 @@ Tempo total de desenvolvimento: 46 horas
 
 ## 👨‍💻 Autor
 *Desenvolvido por Samuel Alves*
+
 *Projeto criado para estudo, prática e portfólio em Python.*
